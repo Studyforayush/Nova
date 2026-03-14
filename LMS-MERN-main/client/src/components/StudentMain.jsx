@@ -31,9 +31,10 @@ const StudentMain = () => {
   }
 
   useEffect(() => {
-    authTeacher()
-    checkUser(user.role,'student');
-  }, [])
+    if (userAuth && user?.role) {
+      checkUser(user.role, 'student');
+    }
+  }, [userAuth, user]);
 
 
   const [allCourses, setAllCourses] = useState([]);

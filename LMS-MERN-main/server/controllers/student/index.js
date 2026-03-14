@@ -18,7 +18,7 @@ router.post('/studentRegister', async (req, res) => {
         }
         let findstudent = await StudentModel.findOne({ email })
         if (findstudent) {
-            res.status(400).json({ error: 'email already exists please login!!' })
+            return res.status(400).json({ error: 'email already exists please login!!' })
         }
 
         let studentData = {
@@ -66,6 +66,7 @@ router.post('/studentLogin', async (req, res) => {
         }
     } catch (error) {
         console.error(error)
+        return res.status(500).json({ error: 'Internal server error' });
     }
 })
 
@@ -102,7 +103,9 @@ router.get('/findStudent', async (req, res) => {
         let id = req.query.id;
         let find = await StudentModel.findById(id);
         if (find) {
-            res.send(find);
+            return res.send(find);
+        } else {
+            return res.status(404).json({ error: 'Student not found' });
         }
     } catch (error) {
         console.error(error);
@@ -122,13 +125,13 @@ router.post('/addToCart', async (req, res) => {
         // console.log(id)
         let find = await StudentModel.findById(id);
         if (!find) {
-            res.status(400).json({ error: 'Student Not Found' })
+            return res.status(400).json({ error: 'Student Not Found' })
         }
         console.log(find)
         //  find.courses.push(courseData);
         find.cart.push(courseData);
         await find.save()
-        res.status(200).json({ success: 'Course Added to Cart' })
+        return res.status(200).json({ success: 'Course Added to Cart' })
 
 
     } catch (error) {

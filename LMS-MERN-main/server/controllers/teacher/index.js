@@ -13,7 +13,7 @@ try {
 }
 let findTeacher = await TeacherModel.findOne({ email })
 if(findTeacher){
-    res.status(400).json({error:'email already exists please login!!'})
+    return res.status(400).json({error:'email already exists please login!!'})
 }
 
 let teacherData = {
@@ -98,7 +98,9 @@ router.get('/findTeacher',async (req,res)=>{
      let id = req.query.id;
      let find = await TeacherModel.findById(id);
       if(find){
-        res.send(find);
+        return res.send(find);
+      } else {
+        return res.status(404).json({error: 'Teacher not found'});
       }
     } catch (error) {
      console.error(error);
@@ -114,7 +116,9 @@ router.get('/findTeacher',async (req,res)=>{
     //  console.log(id,'id')
      let find = await CourseModel.find({teacherId:id});
       if(find){
-        res.send(find);
+        return res.send(find);
+      } else {
+        return res.status(404).json({error: 'Courses not found'});
       }
     } catch (error) {
      console.error(error);
@@ -155,10 +159,10 @@ router.post('/addCourse',async(req,res)=>{
         // let deCodetoken = 
         let findCourse = await CourseModel.findOne({courseName,description,courseImage,courseCategory,price,addChapter,teacher_id})
         if(findCourse){
-            res.status(400).json({error:'course already exists'})
+            return res.status(400).json({error:'course already exists'})
         }else{ let courseDataDetails = new CourseModel(courseData);
             await courseDataDetails.save()
-            res.status(200).json({success:'course added successfully!!'})}
+            return res.status(200).json({success:'course added successfully!!'})}
        
     } catch (error) {
         console.error(error)

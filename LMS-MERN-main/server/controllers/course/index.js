@@ -39,7 +39,7 @@ router.get('/getCourse', async (req,res)=>{
     let {courseIdValue} = req.query;
     let find = await CourseModel.findOne({_id:courseIdValue});
     console.log(find);
-    res.send(find);
+    return res.send(find);
    } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -53,7 +53,7 @@ router.get('/fetchCourse', async (req,res)=>{
     let id = req.query.id;
     let find = await CourseModel.findOne({_id:id});
     console.log(find);
-    res.send(find);
+    return res.send(find);
    } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -66,7 +66,7 @@ router.get('/fetchCourse', async (req,res)=>{
    try {
     let find = await CourseModel.find();
    //  console.log(find);
-    res.send(find);
+    return res.send(find);
    } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -85,7 +85,7 @@ router.post('/updateCourse', async (req,res)=>{
    let updateData = req.body
    let updatedCourse = await CourseModel.updateOne({_id:courseId},
       {$set:updateData})
-      res.send(updatedCourse);
+      return res.send(updatedCourse);
    } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -121,7 +121,7 @@ router.post('/create-checkout-session',async (req,res)=>{
 
       })
       // console.log(session)
-      res.send(session)
+      return res.send(session)
 
    } catch (error) {
       console.error(error)

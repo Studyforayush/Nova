@@ -9,12 +9,17 @@ const AppContext = ({ children }) => {
     const [userAuth, setUserAuth] = useState(false)
     const [login, setLogin] = useState(false)
     const navigate = useNavigate()
-    function checkUser(userRole,role) {
+    function checkUser(userRole, role) {
         let token = localStorage.getItem('token');
         if (!token) {
-            navigate('/login')
+            navigate('/login');
+            return;
         }
-        if(userRole!==role){
+        // Normalize roles for check
+        const normalizedUserRole = userRole === 'teacher' ? 'faculty' : userRole;
+        const normalizedRole = role === 'teacher' ? 'faculty' : role;
+        
+        if (normalizedUserRole !== normalizedRole) {
             navigate('/login');
         }
     }
@@ -22,44 +27,63 @@ const AppContext = ({ children }) => {
     useEffect(() => {
         async function authUser() {
             try {
-                let token = localStorage.getItem('token')
+                let token = localStorage.getItem('token');
+                if (!token) return;
+
                 let response = await axios.get(`${API_BASE}/api/auth/verify`, {
                     headers: {
-                        token: token
+                        token: token,
+                        Authorization: `Bearer ${token}`
                     }
-                })
-                let details = response.data.userDetails;
-                let userId = details._id;
+                });
+                
+                let details = response.data.user;
+                if (!details) return;
+
+                let userId = details.id;
+                
                 if (details.role === 'student') {
                     let userResponse = await axios.get(`${API_BASE}/api/student/findStudent`, {
                         params: {
                             id: userId
                         }
-                    })
-                    let userDetails = userResponse.data
-                    setUser(userDetails)
-
-                    // console.log(userResponse.data, 'findTeacher')
-
-                } else if (details.role === 'teacher') {
+                    });
+                    
+                    if (userResponse.data && userResponse.data.length > 0) {
+                        setUser(userResponse.data[0]);
+                    } else if (userResponse.data) {
+                         setUser(userResponse.data);
+                    } else {
+                        // If not in MongoDB but in Supabase (bypass), set basic data
+                        setUser({ id: userId, name: details.name, role: 'student', email: details.email });
+                    }
+                } else if (details.role === 'teacher' || details.role === 'faculty') {
                     let userResponse = await axios.get(`${API_BASE}/api/teacher/findTeacher`, {
                         params: {
                             id: userId
                         }
-                    })
-                    let userDetails = userResponse.data
-                    setUser(userDetails)
-
-                    console.log(userResponse.data, 'findTeacher')
-
+                    });
+                     if (userResponse.data && userResponse.data.length > 0) {
+                        setUser(userResponse.data[0]);
+                    } else if (userResponse.data) {
+                         setUser(userResponse.data);
+                    } else {
+                        // If not in MongoDB but in Supabase (bypass), set basic data
+                        setUser({ id: userId, name: details.name, role: 'faculty', email: details.email });
+                    }
+                } else if (details.role === 'admin') {
+                    // Admin role doesn't have a specific findAdmin route, use mock data or faculty data
+                    setUser({ id: userId, name: details.name, role: 'admin', email: details.email });
                 }
 
-
-                // console.log(userId)
                 setUserId(userId);
-                // console.log(userId)
+                setUserAuth(true);
+                setLogin(true);
             } catch (error) {
-                console.error(error)
+                console.error("Authentication failed:", error);
+                setUserAuth(false);
+                setLogin(false);
+                localStorage.removeItem('token');
             }
         }
         authUser();

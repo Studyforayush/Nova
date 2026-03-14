@@ -5,7 +5,7 @@ import Upload from './components/Upload'
 import { Routes,Route } from 'react-router-dom';
 import TeacherRegister from './components/TeacherRegister';
 import StudentRegister from './components/StudentRegister';
-import { BouncyCardsFeatures } from './components/AboutUs';
+import About from './components/About';
 import NavbarMain from './components/NavbarMain';
 import Modal from './components/Modal';
 import Test from './components/Test';
@@ -51,7 +51,7 @@ function App() {
       <Route path='/studentLogin' element={<StudentLogin/>}/>
       <Route path='/teacherRegister' element={<TeacherRegister/>}/>
       <Route path='/studentRegister' element={<StudentRegister/>}/>
-      <Route path='/about' element={<BouncyCardsFeatures/>}/>
+      <Route path='/about' element={<About/>}/>
       <Route path='/navbar' element={<NavbarMain/>}/>
       <Route path='/Modal' element={<Modal/>}/>
       <Route path='/teacherNavbar' element={<TeacherNavBar/>}/>

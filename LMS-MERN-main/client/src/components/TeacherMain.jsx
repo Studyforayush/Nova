@@ -31,9 +31,10 @@ const TeacherMain = () => {
   }
 
   useEffect(() => {
-    authTeacher()
-    checkUser(user.role,'teacher')
-  }, [])
+    if (userAuth && user?.role) {
+      checkUser(user.role, 'faculty'); // Using 'faculty' as per bypass logic
+    }
+  }, [userAuth, user]);
   const [allCourses, setAllCourses] = useState([]);
   const [course, setCourse] = useState([]);
 

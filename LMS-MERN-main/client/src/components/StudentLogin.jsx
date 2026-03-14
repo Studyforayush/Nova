@@ -1,38 +1,50 @@
-import {useState} from 'react'
+import {useState, useEffect} from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../api';
+import { useGlobalContext } from '../GlobalContext';
 
 const StudentLogin = () => {
     const navigate = useNavigate();
     const [showAlert, setShowAlert] = useState(false);
-    const [successAlert, setSuccessAlert] = useState(false);
+    const { userAuth, setUserAuth, setLogin, user } = useGlobalContext();
   
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (userAuth && user?.role === 'student') {
+            navigate('/studentMain');
+        }
+    }, [userAuth, user, navigate]);
+
     const [studentLoginData, setStudentLoginData] = useState({
-      name: '',
-      email: ''
+      email: '',
+      password: ''
     });
-    let handleChange = (e) => {
-      setStudentLoginData({ ...studentLoginData, [e.target.name]: e.target.value })
-    }
-  
-  
+
+    const handleChange = (e) => {
+      setStudentLoginData({ ...studentLoginData, [e.target.name]: e.target.value });
+    };
+
     let handleSubmit = async (e) => {
       e.preventDefault();
       try {
         let response = await axios.post(`${API_BASE}/api/student/studentLogin`, {
           ...studentLoginData
         });
-     console.log(response.data)
-     navigate('/studentNavbar')
-    
+        
+        if (response.data.token) {
+            localStorage.setItem('token', response.data.token);
+            setUserAuth(true);
+            setLogin(true);
+            navigate('/studentMain');
+        } else {
+            setShowAlert(true);
+            setTimeout(() => setShowAlert(false), 4000);
+        }
       } catch (error) {
-        console.log('this is a error')
-        console.error(error)
-        setShowAlert(!showAlert)
-        setTimeout(function () {
-          setShowAlert(false)
-        }, 4000)
+        console.error(error);
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 4000);
       }
     };
 

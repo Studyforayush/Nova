@@ -1,446 +1,386 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import TeacherNavBar from './TeacherNavBar';
 import { useGlobalContext } from "../GlobalContext";
-import Toast from "./Toast";
 import { API_BASE } from '../api';
+import { motion, AnimatePresence } from 'framer-motion';
+import NavbarMain from './NavbarMain';
 
 const CourseForm = () => {
-  const {user} = useGlobalContext()
-  const teacherId = user._id;
-  const teacherName = user.name;
-  const { courseId } = useParams();
+  const {user, userAuth} = useGlobalContext()
+  const teacherId = user?._id || user?.id || 'admin-mock-id';
   const navigate = useNavigate()
   const [toast, setToast] = useState(null);
-  const [img, setImg] = useState('');
-  const [video, setVideo] = useState(null);
-  const [imageUrl, setImageUrl] = useState(null);
-  const [imageValue, setImageValue] = useState(false);
-  const [profile, setProfile] = useState(false);
-  const [home, setHome] = useState(false);
-  const [createCourse, setCreateCourse] = useState(true);
-  const [mycourses, setCourses] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [img, setImg] = useState(null);
+  const [step, setStep] = useState(1); // 1: Course Info, 2: Chapters
+  const [courseId, setCourseId] = useState(null);
 
-  let [courseData, setCourseData] = useState({
+  const [courseData, setCourseData] = useState({
     courseTitle: '',  
     courseDescription: '',
     courseImage: '',
     coursePrice: '',
     courseCategory: '',
-    courseChapters: [],
-    courseQuiz: [],
     teacherId
   });
 
-  let handleChange = (e) => {
+  const [chapters, setChapters] = useState([]);
+  const [currentChapter, setCurrentChapter] = useState({
+    chapterTitle: '',
+    chapterVideo: '', // Video URL
+    chapterDuration: ''
+  });
+  const [videoFile, setVideoFile] = useState(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  useEffect(() => {
+    if (!userAuth) {
+        navigate('/login');
+    }
+  }, [userAuth, navigate]);
+
+  const handleChange = (e) => {
     setCourseData({ ...courseData, [e.target.name]: e.target.value });
   }
-  const showToast = (message, duration = 2000) => {
-    setToast({ message });
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setToast(null);
-        resolve();
-      }, 1000);
-    });
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  let uploadFile = async (type, data) => {
-    try {
-      let cloudName = 'drgqcwxq6';
-      let resourceType = type === 'image' ? 'image' : 'video';
-      let api = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
-
-      const res = await axios.post(api, data);
-      const { secure_url } = res.data;
-
-      if (resourceType === 'image') {
-        setImageValue(false)
-        setImageUrl(secure_url);
-
-
-      }
-
-      return secure_url;
-    } catch (error) {
-      console.error(error);
+  const handleImageChange = (e) => {
+    if (e.target.files[0]) {
+        setImg(e.target.files[0]);
     }
   };
 
-
-  //  handleUpload(); 
-
-  // const handleUpload = async () => {
-  //   try {
-  //     console.log('in upload');
-  //     setLoading(true);
-
-  //     let imgUrl = await uploadFile('image');
-  //     console.log(imgUrl)
-
-  //     // let videoUrl = await uploadFile('video');
-
-  //     await axios.post(`/api/videos/upload`, { imgUrl });
-
-  //     // setImg(null);
-  //     // setVideo(null);
-
-  //     console.log("File upload success!");
-  //     setLoading(false);
-  //     // navigate("/")
-  //   } catch (error) {
-  //     console.error(error);
-  //   }
-
-  // }
-
-
-
-  let handleSubmit = async (e) => {
-    // console.log(courseData)
-    e.preventDefault()
-    if (courseData.courseChapters.length < 1) {
-      return;
-    }
-    let response = await axios.post(`${API_BASE}/api/courses/updateCourse`, { ...courseData,teacherId,teacherName }, {
-      params: {
-        id: courseId
-      }
-    })
-    console.log(courseData);
-    setCourseData({
-      courseTitle: '',
-      courseDescription: '',
-      courseImage: '',
-      coursePrice: '',
-      courseCategory: '',
-      courseChapters: [],
-      courseQuiz: [],
-    })
-    if (response.status === 200) {
-      await showToast(
-        "Course Created"
-      )
- 
-        navigate('/teacherMain')
-  } else {
-      showToast("Something went wrong!");
-  }
-  
-
-  }
-  const handleSelectChange = (e) => {
-    setCourseData({ ...courseData, 'courseCategory': e.target.value });
-    console.log(courseData);
-  };
-
-  const handleImageUpload = async (e) => {
+  const uploadToCloudinary = async (file, type = 'image') => {
+    if (!file) return null;
+    const data = new FormData();
+    data.append("file", file);
+    data.append("upload_preset", "unsigned_upload");
+    
     try {
-      setImageValue(true);
-      const newData = new FormData();
-      newData.append("file", e.target.files[0]);
-      newData.append('upload_preset', 'images_preset');
-
-      setImg(e.target.files[0]);
-
-      const imageUrl = await uploadFile('image', newData);
-      setCourseData((prevData) => ({ ...prevData, 'courseImage': imageUrl }));
-      console.log(courseData, 'courseData');
-      console.log(imageUrl);
-
-      // Display image preview
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImageUrl(event.target.result);
-      };
-      reader.readAsDataURL(e.target.files[0]);
-
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-
-
-
-  let courseDataFetch = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/api/courses/getCourse`, {
-        params: {
-          courseIdValue: courseId,
-        },
-      });
-      console.log(response.data);
-      setCourseData(response.data);
-    } catch (error) {
-      console.error(error);
+        const res = await axios.post(
+            `https://api.cloudinary.com/v1_1/drgqcwxq6/${type}/upload`,
+            data
+        );
+        return res.data.secure_url;
+    } catch (err) {
+        console.error("Cloudinary upload failed", err);
+        return null;
     }
   };
 
   const handleAddChapter = async () => {
-    if (courseId) {
-      if (!courseData.courseCategory || !courseData.courseTitle || !courseData.coursePrice || !courseData.courseDescription || !courseData.courseImage) {
+    if (!currentChapter.chapterTitle || (!videoFile && !currentChapter.chapterVideo)) {
+        showToast("Please provide chapter title and video");
         return;
-      }
-      navigate(`/addChapter/${courseId}`)
-    }
-    else {
-      if (!courseData.courseCategory || !courseData.courseTitle || !courseData.coursePrice || !courseData.courseDescription || !courseData.courseImage) {
-        return;
-      }
-      let response = await axios.post(`${API_BASE}/api/courses/createCourse`, { ...courseData,teacherId,teacherName });
-      let courseId = response.data.id;
-      navigate(`/addChapter/${courseId}`)
-
     }
 
-  }
+    setUploadingVideo(true);
+    try {
+        let videoUrl = currentChapter.chapterVideo;
+        if (videoFile) {
+            const uploadedUrl = await uploadToCloudinary(videoFile, 'video');
+            if (uploadedUrl) videoUrl = uploadedUrl;
+        }
 
+        const payload = {
+            ...currentChapter,
+            chapterVideo: videoUrl,
+            chapterDuration: currentChapter.chapterDuration || "10:00"
+        };
 
+        const response = await axios.post(`${API_BASE}/api/chapters/addChapter?id=${courseId}`, payload);
+        
+        if (response.status === 200) {
+            setChapters([...chapters, payload]);
+            setCurrentChapter({ chapterTitle: '', chapterVideo: '', chapterDuration: '' });
+            setVideoFile(null);
+            showToast("Chapter added!");
+        }
+    } catch (error) {
+        console.error(error);
+        showToast("Failed to add chapter");
+    } finally {
+        setUploadingVideo(false);
+    }
+  };
 
-  useEffect(() => {
+  const handleSubmitCourse = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+        let finalImageUrl = courseData.courseImage;
+        if (img) {
+            const uploadedUrl = await uploadToCloudinary(img, 'image');
+            if (uploadedUrl) finalImageUrl = uploadedUrl;
+        }
 
-    courseId ? courseDataFetch() : ''
-  }, []);
+        const payload = {
+            ...courseData,
+            courseImage: finalImageUrl,
+            teacherId: teacherId,
+            teacherName: user?.name || user?.fullName || 'Admin'
+        };
+
+        const response = await axios.post(`${API_BASE}/api/courses/createCourse`, payload);
+        
+        if (response.status === 200) {
+            setCourseId(response.data.id);
+            setStep(2);
+            showToast("Course basic info saved! Now add chapters.");
+        }
+    } catch (error) {
+        console.error(error);
+        showToast(error.response?.data?.error || "Failed to create course");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
-    <>
-      {/* <h2 className='p-1 bg-indigo-600 ' style={{ textAlign:'',border:'2px solid transparent',fontSize:'1.5rem',color:'white' }}><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 inline m-1">
-  <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
-</svg>
-Create Course</h2> */}
-      <TeacherNavBar profile={profile} home={home} mycourses={mycourses} createCourse={createCourse} />
-      <div id='animation-container' style={{ minHeight: '85vh', width: '100%', }}>
-        <form className="flex flex-col md:flex-row bg-gray-00 w-full " onSubmit={handleSubmit}  >
-          <div className="w-full p-2 pt-2" >
-            <div className="mt-2 px-16">
-              <label htmlFor="courseTitle" className="block text-md font-bold font-medium leading-6 text-gray-900 " style={{ textAlign: 'left' }}>
-                Course Title
-              </label>
-              <input
-                id="courseTitle"
-                name="courseTitle"
-                type="text"
-                value={courseData.courseTitle}
-                onChange={handleChange}
-                required
-                className="w-full h-11 rounded border-1 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm p-2"
-              />
-            </div>
-            <div className="mt-4 px-16">
-              <label htmlFor="courseDescription" className="block text-md font-medium leading-6 text-gray-900" style={{ textAlign: 'left' }}>
-                Course Description
-              </label>
-              <textarea
-                id="courseDescription"
-                name="courseDescription"
-                value={courseData.courseDescription}
-                onChange={handleChange}
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden">
+        {/* Background Glows */}
+        <div className="absolute top-0 left-0 w-full h-full -z-10 pointer-events-none">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
+        </div>
 
-                required
-                className="w-full h-24 rounded border-1 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm p-2 text-sm"
-              ></textarea>
-            </div>
-            <div className="mt-2 px-16 " >
-              <label htmlFor="courseImage" className="block text-md font-bold font-medium leading-6 text-gray-900 " style={{ textAlign: 'left' }}>
-                Course Image
-              </label>
-              <input
-                id="courseImage"
-                name="courseImage"
-                type="file"
-                accept="image/*"
-                // value={imageUrl}
-                onChange={handleImageUpload}
+        <NavbarMain />
 
+        <div className="flex-1 flex items-center justify-center p-6 py-12">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-3xl bg-[#0f0f0f] border border-white/5 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative"
+            >
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
-                // required
-                className="file-input   w-full h-11  rounded border-1   text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-indigo-600 text-sm    
-            file:bg-indigo-600"
-                style={{ border: '1px solid grey', marginBottom: '0' }}
-              />
-            </div>
-            <div className=' px-16'>
-              {imageValue ? <div className='w-full h-80' style={{ border: '1px solid gray' }}><div class="flex items-center justify-center w-full h-full bg-gray-300   dark:bg-gray-700">
-                <svg class="w-10 h-10 text-gray-200 dark:text-gray-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 18">
-                  <path d="M18 0H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2Zm-5.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm4.376 10.481A1 1 0 0 1 16 15H4a1 1 0 0 1-.895-1.447l3.5-7A1 1 0 0 1 7.468 6a.965.965 0 0 1 .9.5l2.775 4.757 1.546-1.887a1 1 0 0 1 1.618.1l2.541 4a1 1 0 0 1 .028 1.011Z" />
-                </svg>
-              </div></div>
-                : <img src={courseData.courseImage}  alt="" className=' w-full h-80 rounded border-1 ' />
-              }
-
-            </div>
-          </div>
-
-          <div className="md:w-full p-2 pt-2">
-            <div className="mt-2.5 px-16">
-              <label htmlFor="coursePrice" className="block text-md font-bold leading-6 text-gray-900" style={{ textAlign: 'left' }}>
-                Course Price
-              </label>
-
-              <input
-                id="coursePrice"
-                name="coursePrice"
-                value={courseData.coursePrice}
-                onChange={handleChange}
-                required
-                type='number'
-                className="w-full h-11 rounded border-1 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm p-2"
-              />
-            </div>
-
-            <div className="mt-5 px-16 ">
-              <label htmlFor="select" className="block text-md font-bold leading-6 text-gray-900" style={{ textAlign: 'left' }}>
-                Course Category
-              </label>
-              <select id="select"
-                value={courseData.courseCategory}
-                onChange={handleSelectChange}
-                required
-                name='select' className="bg-gray-10 border border-gray-400 text-gray-500 text-sm rounded focus:ring-indigo-500 focus:border-indigo-500 block w-full h-11 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" style={{ marginTop: '0%' }}>
-                <option selected hidden className='text-gray-200' style={{ color: 'grey' }}>Select a Category</option>
-                <option >Web Development</option>
-                <option >Health and Fitness</option>
-                <option >Finance and Marketing</option>
-                <option >Data Analytics</option>
-                <option >Other</option>
-              </select>
-            </div>
-            <div className="mt-4 px-16">
-              <label htmlFor="courseTitle" className="block text-md font-bold font-medium leading-6 text-gray-900" style={{ textAlign: 'left' }}>
-                Course Chapters
-              </label>
-              <div className='overflow-x-hidden overflow-y-auto' style={{ border: '1px solid #94a3b8', height: '50vh' }}>
-
-                {/* <div className='flex'>
-
-                <button onClick={handleAddChapter} className="w-full h-11 bg-indigo-500   text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 md:text-sm p-2 pt-0 " style={{ borderRadius: '0', color: 'white' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Add Chapter</button>
-              </div> */}
-
-                {/* <div className="flex flex-col">
-                <div className="-m-1.5 overflow-x-auto">
-                  <div className="p-1.5 min-w-full inline-block align-middle py-0 ">
-                    <div className="overflow-hidden"> */}
-                {/* <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        {courseData.courseChapters.map((ele, index) => {
-                          return <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            <tr className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                              <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 pl-0">{ele.chapterTitle}</td>
-                              <td className="px-3 py-3 whitespace-nowrap text-end text-sm font-medium pr-0">
-                                <button type="button" className="inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:pointer-events-none dark:text-blue-500 dark:hover:text-blue-400 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                </svg>
-                                  Edit</button>
-                              </td>
-                              <td className="px-2 py-2 whitespace-nowrap text-end text-sm font-medium pl-0">
-                                <button type="button" className="inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:pointer-events-none dark:text-blue-500 dark:hover:text-blue-400 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                </svg>
-                                  Delete</button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        })
-                        }
-
-                      </table> */}
-                <div className="p-0 max-w-screen-xl mx-auto px-0 md:px-0">
-                  <div className="items-start justify-between md:flex">
-
-                    <div className="mt-2 ml-auto md:mt-3.5 md:mr-2 ">
-                      <button
-                        onClick={handleAddChapter}
-                        className="inline-block px-3 py-2  text-white duration-150 font-medium bg-indigo-600 rounded-lg hover:bg-indigo-500 active:bg-indigo-700 md:text-sm mt-2"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 inline m-1 mb-1.2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Add Chapter
-                      </button>
+                <div className="mb-10 flex justify-between items-end">
+                    <div>
+                        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
+                            {step === 1 ? "Create New Course" : "Add Course Content"}
+                        </h1>
+                        <p className="text-gray-500 font-light">
+                            {step === 1 ? "Step 1: Basic Information" : `Step 2: Chapters (${chapters.length} added)`}
+                        </p>
                     </div>
-                  </div>
-                  <div className="mt-6 shadow-sm border  overflow-x-auto p-0">
-                    <table className="w-full table-auto text-sm text-left p-0">
-
-                      <tbody className="text-gray-600 divide-y">
-                        {
-                          courseData.courseChapters.map((ele, index) => (
-                            <tr key={index} className='hover:bg-gray-100'>
-
-                              <td className="px-6 py-4 whitespace-nowrap ">{ele.chapterTitle}</td>
-                              <td className="text-right px-6 whitespace-nowrap">
-                                <button  className="py-1.5 px-3 font-medium text-indigo-600 mx-1 hover:text-indigo-500 duration-150 hover:bg-gray-50 rounded-lg">
-                                  Edit
-                                </button>
-                                <button  className="py-2 leading-none px-3 mx-1 font-medium text-red-600 hover:text-red-500 duration-150 hover:bg-gray-50 rounded-lg">
-                                  Delete
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        }
-                      </tbody>
-                    </table>
-                  </div>
+                    <div className="flex gap-2 mb-2">
+                        <div className={`w-3 h-3 rounded-full ${step === 1 ? 'bg-blue-500' : 'bg-blue-500/20'}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${step === 2 ? 'bg-purple-500' : 'bg-purple-500/20'}`}></div>
+                    </div>
                 </div>
-                {/* </div>
-                  </div>
-                </div>
-              </div> */}
 
-                {/* {courseData.courseChapters.map((ele,index)=>{
-             return <div key={index} className='flex w-full h-8 bg-gray-10 border border-gray-400 text-gray-900 text-sm  bg-gray-50' style={{border:'1px solid grey',fontSize:'1.2rem'}}>
-                <p className='m-1 p-1 '>{index+1}</p>
-                <p className='m-1 p-1 w-1/2 '>{ele.chapterTitle}</p>
-                <div className='flex items-center p-3'>
-  <button className='flex items-center m-0.5 p-2 ml-8 bg-indigo-500 mt-0.5 p-2.5 text-white  ' style={{fontSize:'1rem',borderRadius:'0%'}}  >
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="block w-5 h-5 mr-1">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-    </svg>
-    Edit
-  </button>
-</div>
-<div className='flex items-center'>
-  <button className='flex items-center m-0.5 p-2 ml-8 bg-indigo-500 mt-0.5 p-2.5 text-white ' style={{fontSize:'1rem',borderRadius:'0'}}  >
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-</svg>
+                {step === 1 ? (
+                    <form onSubmit={handleSubmitCourse} className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1">Course Title</label>
+                                <input 
+                                    type="text" 
+                                    name="courseTitle"
+                                    value={courseData.courseTitle}
+                                    onChange={handleChange}
+                                    className="w-full bg-[#151515] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white/20 transition-all placeholder:text-gray-700"
+                                    placeholder="e.g. Advanced Machine Learning 2024"
+                                    required
+                                />
+                            </div>
 
-    Delete
-  </button>
-</div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1">Description</label>
+                                <textarea 
+                                    name="courseDescription"
+                                    value={courseData.courseDescription}
+                                    onChange={handleChange}
+                                    className="w-full bg-[#151515] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white/20 transition-all placeholder:text-gray-700 min-h-[120px] resize-none"
+                                    placeholder="What will students learn in this course?"
+                                    required
+                                />
+                            </div>
 
-        
+                            <div>
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1">Category</label>
+                                <select 
+                                    name="courseCategory"
+                                    value={courseData.courseCategory}
+                                    onChange={handleChange}
+                                    className="w-full bg-[#151515] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white/20 transition-all appearance-none"
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    <option value="Development">Development</option>
+                                    <option value="Design">Design</option>
+                                    <option value="Business">Business</option>
+                                    <option value="Marketing">Marketing</option>
+                                </select>
+                            </div>
 
-              </div>
-              
-             })} */}
+                            <div>
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1">Price (USD)</label>
+                                <input 
+                                    type="number" 
+                                    name="coursePrice"
+                                    value={courseData.coursePrice}
+                                    onChange={handleChange}
+                                    className="w-full bg-[#151515] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white/20 transition-all placeholder:text-gray-700"
+                                    placeholder="49.99"
+                                    required
+                                />
+                            </div>
 
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1">Course Cover Image</label>
+                                <div className="group relative w-full h-48 bg-[#151515] border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center transition-all hover:border-white/20 overflow-hidden">
+                                    {img ? (
+                                        <div className="text-center p-4">
+                                            <p className="text-blue-400 font-bold mb-2">File Selected:</p>
+                                            <p className="text-sm text-gray-400 truncate max-w-[200px]">{img.name}</p>
+                                            <button type="button" onClick={() => setImg(null)} className="mt-4 text-xs text-red-400 hover:underline">Remove</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <svg className="w-10 h-10 text-gray-600 mb-4 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <p className="text-sm text-gray-600 group-hover:text-gray-400 transition-colors font-medium">Click to upload or drag & drop</p>
+                                        </>
+                                    )}
+                                    <input type="file" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                                </div>
+                            </div>
+                        </div>
 
+                        <div className="pt-6">
+                            <motion.button 
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                disabled={loading}
+                                type="submit" 
+                                className={`w-full ${loading ? 'bg-gray-800' : 'bg-white'} text-black font-black py-5 rounded-2xl shadow-2xl transition-all text-lg flex items-center justify-center gap-3`}
+                            >
+                                {loading ? "Saving..." : "Next: Add Chapters"}
+                            </motion.button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="space-y-8">
+                        <div className="bg-[#151515] p-6 rounded-3xl border border-white/5 space-y-6">
+                            <div>
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Chapter Title</label>
+                                <input 
+                                    type="text" 
+                                    value={currentChapter.chapterTitle}
+                                    onChange={(e) => setCurrentChapter({...currentChapter, chapterTitle: e.target.value})}
+                                    className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50"
+                                    placeholder="e.g. Introduction to React"
+                                />
+                            </div>
 
-              </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Video File</label>
+                                    <div className="relative h-[58px] bg-[#0a0a0a] border border-white/5 rounded-xl flex items-center px-6 overflow-hidden">
+                                        <span className="text-gray-500 truncate">{videoFile ? videoFile.name : "Select MP4..."}</span>
+                                        <input 
+                                            type="file" 
+                                            onChange={(e) => setVideoFile(e.target.files[0])}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            accept="video/*"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Duration</label>
+                                    <input 
+                                        type="text" 
+                                        value={currentChapter.chapterDuration}
+                                        onChange={(e) => setCurrentChapter({...currentChapter, chapterDuration: e.target.value})}
+                                        className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50"
+                                        placeholder="e.g. 15:30"
+                                    />
+                                </div>
+                            </div>
 
-            </div>
-            <div className='px-16 mt-4'>
-              <button
-                type="submit"
-                className=" md:w-full justify-center rounded bg-indigo-600 px-3 py-1.5 text-md font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 mt-2 "
-              >
-                Create Course
-              </button>
-            </div>
+                            <motion.button 
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                disabled={uploadingVideo}
+                                onClick={handleAddChapter}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                            >
+                                {uploadingVideo ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Uploading Video...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Add This Chapter
+                                    </>
+                                )}
+                            </motion.button>
+                        </div>
 
-          </div>
-        </form>
-        {toast && <Toast message={toast.message} onClose={toast.onClose} />}
-      </div>
-    </>
+                        {/* Chapters List */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest">Added Chapters</h3>
+                            {chapters.length === 0 ? (
+                                <p className="text-gray-700 italic text-center py-8">No chapters added yet.</p>
+                            ) : (
+                                chapters.map((ch, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">{idx + 1}</div>
+                                            <div>
+                                                <p className="font-bold text-white">{ch.chapterTitle}</p>
+                                                <p className="text-xs text-gray-500">{ch.chapterDuration}</p>
+                                            </div>
+                                        </div>
+                                        <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                                    </div>
+                                ))
+                            )}
+                        </div>
 
+                        <div className="pt-8 border-t border-white/5">
+                            <motion.button 
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                onClick={() => navigate('/admin-dashboard')}
+                                className="w-full bg-white text-black font-black py-5 rounded-2xl shadow-2xl transition-all text-lg"
+                            >
+                                Finish & Go to Dashboard
+                            </motion.button>
+                        </div>
+                    </div>
+                )}
+            </motion.div>
+        </div>
+
+        <AnimatePresence>
+            {toast && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 50 }}
+                    className="fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-4 bg-white text-black font-black rounded-full shadow-2xl z-50"
+                >
+                    {toast}
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
   );
 };
 

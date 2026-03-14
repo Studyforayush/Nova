@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../config/supabaseClient';
-import { Bar } from 'react-chartjs-2';
-import 'chart.js/auto';
+import DashboardLayout from './dashboard/DashboardLayout';
+import AnalyticsChart from './dashboard/AnalyticsChart';
+import DataTable from './dashboard/DataTable';
 
 const FacultyDashboard = () => {
     const [user, setUser] = useState(null);
@@ -19,48 +20,45 @@ const FacultyDashboard = () => {
         datasets: [{
             label: 'Class Average Performance',
             data: [78, 65, 82],
-            backgroundColor: '#8b5cf6'
+            backgroundColor: '#aaaaaa' // strictly grayscale
         }]
     };
 
+    const studentsNeedingAttention = [
+        { name: 'John Doe', class: '10B', score: '45%' },
+        { name: 'Jane Smith', class: '10A', score: '48%' },
+    ];
+
+    const columns = [
+        { header: 'Student Name', accessor: 'name' },
+        { header: 'Class', accessor: 'class' },
+        { header: 'Score', accessor: 'score' },
+    ];
+
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            <div className="w-64 bg-indigo-900 text-white p-6">
-                <h2 className="text-2xl font-bold mb-8">Faculty Portal</h2>
-                <div className="text-sm text-indigo-200 mb-8">
-                    <p>Welcome,</p>
-                    <p className="font-semibold text-white">{user?.user_metadata?.name || 'Professor'}</p>
-                </div>
-                <nav className="space-y-4">
-                    <a href="/faculty-dashboard" className="block p-3 bg-indigo-800 rounded">Classes</a>
-                    <a href="/analytics" className="block p-3 hover:bg-indigo-800 rounded">Overall Analytics</a>
-                </nav>
-            </div>
-
-            <div className="flex-1 p-8">
-                <h1 className="text-3xl font-bold text-gray-800 mb-6">Faculty Dashboard</h1>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-semibold mb-4">Class Performance</h3>
-                        <Bar data={chartData} />
+        <DashboardLayout title="Faculty Portal">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-[#1a1a1a] p-6 rounded-xl border border-[#2a2a2a] shadow-md flex flex-col h-full">
+                    <h3 className="text-sm font-medium tracking-wide text-gray-400 uppercase mb-6 flex items-center">
+                        <svg className="w-5 h-5 mr-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Class Performance
+                    </h3>
+                    <div className="flex-1 min-h-[250px] relative">
+                        <AnalyticsChart type="bar" data={chartData} />
                     </div>
+                </div>
 
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-semibold mb-4">Students Needing Attention</h3>
-                        <ul className="space-y-3">
-                            <li className="flex justify-between items-center p-3 bg-red-50 text-red-700 rounded border border-red-200">
-                                <span>John Doe (10B)</span>
-                                <span className="font-bold">45%</span>
-                            </li>
-                            <li className="flex justify-between items-center p-3 bg-red-50 text-red-700 rounded border border-red-200">
-                                <span>Jane Smith (10A)</span>
-                                <span className="font-bold">48%</span>
-                            </li>
-                        </ul>
+                <div className="bg-[#1a1a1a] p-6 rounded-xl border border-[#2a2a2a] shadow-md flex flex-col h-full">
+                    <h3 className="text-sm font-medium tracking-wide text-gray-400 uppercase mb-6 flex items-center">
+                        <svg className="w-5 h-5 mr-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        Needs Attention
+                    </h3>
+                    <div className="flex-1">
+                        <DataTable columns={columns} data={studentsNeedingAttention} />
                     </div>
                 </div>
             </div>
-        </div>
+        </DashboardLayout>
     );
 };
 

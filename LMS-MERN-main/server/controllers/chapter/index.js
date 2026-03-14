@@ -19,7 +19,9 @@ router.post('/addChapter',async (req,res)=>{
         if(find){
             find.courseChapters.push(chapterData);
             await find.save()
-            res.status(200).json({message:'chapter added successfully'})
+            return res.status(200).json({message:'chapter added successfully'})
+        } else {
+            return res.status(404).json({ error: 'Course not found' });
         }
 
        
