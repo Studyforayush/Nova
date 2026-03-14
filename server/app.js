@@ -18,7 +18,7 @@ import './dbConnect.js'
 
 // Express App
 const app = express();
-const port = process.env.PORT || 5010;
+const port = process.env.PORT || 10000;
 
 app.use(cors());
 
@@ -30,6 +30,11 @@ app.use(cors());
 
 
 app.use(express.json());
+
+// Health Check
+app.get("/", (req, res) => {
+  res.status(200).send("Server is running perfectly!");
+});
 
 // Routes
 app.use("/api/videos", videoRoutes);
