@@ -45,7 +45,7 @@ app.use("/api/analytics", analyticsRoutes);
 
 
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log("Server started listening on port", port);
 });
 

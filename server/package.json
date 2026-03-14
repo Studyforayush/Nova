@@ -23,8 +23,8 @@
     "jwa": "^1.4.2"
   },
   "scripts": {
-    "start": "nodemon app.js",
-    "start:node": "node app.js",
+    "start": "node app.js",
+    "start:nodemon": "nodemon app.js",
     "dev": "nodemon app.js"
   },
   "keywords": [],
